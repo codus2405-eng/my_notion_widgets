@@ -1,0 +1,112 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1.0">
+<title>포토 캘린더</title>
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+html,body{width:100%;min-height:100%;margin:0}
+body{font-family:-apple-system,"Malgun Gothic",sans-serif;background:transparent;display:flex;justify-content:center;align-items:flex-start;padding:0}
+.card{width:100%;height:100%;min-height:360px;background:#fff;border-radius:16px;overflow:visible;box-shadow:0 4px 24px rgba(0,0,0,.08);position:relative;container-type:size}
+.hero{width:100%;height:38%;min-height:130px;max-height:240px;background:#EAF1EF;position:relative;cursor:pointer;overflow:hidden;border-radius:16px 16px 0 0}
+.hero img{width:100%;height:100%;object-fit:cover;display:block}
+.hero-placeholder{position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:8px;color:#9BAFA9}
+.hero-placeholder svg{width:30px;height:30px}.hero-placeholder span{font-size:12px}#photoInput{display:none}
+.dotted-divider{height:9px;display:flex;justify-content:space-between;align-items:center;padding:0 10px}
+.dotted-divider span{width:3px;height:3px;border-radius:50%;background:#D8DDD9}
+.header{height:10%;min-height:40px;display:flex;align-items:center;justify-content:center;gap:14px;padding:8px 0 0}
+.nav-btn{width:22px;height:22px;border:0;background:transparent;color:#C7CCC9;font-size:14px;cursor:pointer}.nav-btn:hover{color:#6FA35E}
+.month-label{font-size:clamp(13px, 5cqw, 16px);font-weight:700;color:#4A5D3A;letter-spacing:.3px;display:flex;align-items:center;gap:6px}
+.month-label .sep{font-size:13px}
+.weekdays,.days{display:grid;grid-template-columns:repeat(7,1fr);text-align:center}
+.weekdays{height:6%;min-height:24px;padding:5px clamp(8px, 4cqw, 14px) 2px}.weekdays div{font-size:clamp(8px, 3cqw, 10px);color:#6FA35E;font-weight:600}
+.days{padding:0 clamp(8px, 4cqw, 14px) clamp(8px, 3cqh, 18px);align-content:start;grid-auto-rows:clamp(28px, 7cqh, 38px)}
+.days div{height:clamp(28px, 7cqh, 38px);min-width:0;position:relative;display:flex;align-items:center;justify-content:center;font-size:clamp(11px, 3.8cqw, 13px);color:#3C3C38;cursor:pointer;border-radius:8px}
+.days div:not(.muted):hover{background:#F3F7F1}.days .muted{color:#D9D9D5;cursor:default}
+.day-number{width:clamp(22px, 8cqw, 26px);height:clamp(22px, 8cqw, 26px);border-radius:50%;display:flex;align-items:center;justify-content:center;font-weight:400}
+.days .today .day-number{background:#6FA35E;color:#fff;font-weight:700}
+.event-dot{position:absolute;left:50%;bottom:clamp(3px, 1.2cqh, 5px);transform:translateX(-50%);width:4px;height:4px;border-radius:50%;background:#7FA878}
+.days .today .event-dot{background:#FFFFFF}
+.event-tooltip{position:fixed;z-index:50;width:180px;max-width:calc(100vw - 24px);padding:10px 12px;background:rgba(255,255,255,.98);border:1px solid #DDE6DA;border-radius:10px;box-shadow:0 5px 18px rgba(55,75,50,.12);color:#465541;font-size:11px;line-height:1.5;pointer-events:none;display:none}
+.tooltip-date{font-size:10px;color:#7FA878;font-weight:700;margin-bottom:4px}.tooltip-item{white-space:nowrap;overflow:hidden;text-overflow:ellipsis}.tooltip-more{color:#A0AAA0;margin-top:2px}
+.modal-backdrop{position:fixed;inset:0;z-index:100;background:rgba(35,45,35,.18);display:none;align-items:center;justify-content:center;padding:16px}.modal-backdrop.open{display:flex}
+.modal{width:min(300px,100%);background:#fff;border:1px solid #E0E8DD;border-radius:14px;box-shadow:0 10px 35px rgba(40,55,40,.18);padding:18px}
+.modal-head{display:flex;align-items:center;justify-content:space-between;margin-bottom:14px}.modal-title{color:#4A5D3A;font-size:15px;font-weight:700}
+.modal-close{border:0;background:transparent;color:#AAB2A8;font-size:20px;line-height:1;cursor:pointer}.selected-date{font-size:11px;color:#8A9588;margin-bottom:12px}
+.schedule-list{display:flex;flex-direction:column;gap:6px;margin-bottom:12px;max-height:120px;overflow-y:auto}
+.schedule-row{display:flex;align-items:center;gap:7px;padding:7px 8px;background:#F5F8F3;border-radius:7px;font-size:11px;color:#4E5C4B}
+.schedule-row span{flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.delete-event{border:0;background:transparent;color:#B9C0B7;cursor:pointer;font-size:13px;padding:1px 2px}.delete-event:hover{color:#9B6E68}
+.schedule-form{display:flex;gap:6px}.schedule-input{flex:1;min-width:0;height:34px;border:1px solid #DCE5D9;border-radius:7px;padding:0 9px;outline:0;font-size:11px;color:#4A5448}.schedule-input:focus{border-color:#9DBB98}
+.add-event{width:38px;height:34px;border:0;border-radius:7px;background:#7FA878;color:#fff;font-size:17px;cursor:pointer}.add-event:hover{background:#6F9969}
+.empty-events{color:#B1B8AF;font-size:10px;padding:3px 0 9px}
+@container (max-width: 280px){.hero{min-height:115px}.month-label{font-size:13px}.nav-btn{width:18px;height:18px}.days div{font-size:11px}}.card{max-width:100%}}
+</style>
+</head>
+<body>
+<div class="card">
+<div class="hero" id="heroBtn">
+<div class="hero-placeholder" id="heroPlaceholder">
+<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><rect x="3" y="5" width="18" height="14" rx="2"/><circle cx="8.5" cy="10.5" r="1.5"/><path d="M21 15l-5-5-9 9"/></svg>
+<span>사진이나 움짤을 눌러서 추가하세요</span></div>
+<img id="heroImg" style="display:none" alt="배너 이미지"><input type="file" id="photoInput" accept="image/*">
+</div>
+<div class="dotted-divider" id="dots"></div>
+<div class="header"><button class="nav-btn" id="prevBtn" aria-label="이전 달">&#8249;</button><div class="month-label" id="monthLabel"></div><button class="nav-btn" id="nextBtn" aria-label="다음 달">&#8250;</button></div>
+<div class="weekdays"><div>S</div><div>M</div><div>T</div><div>W</div><div>T</div><div>F</div><div>S</div></div>
+<div class="days" id="daysGrid"></div>
+</div>
+
+<div class="event-tooltip" id="eventTooltip"></div>
+<div class="modal-backdrop" id="modalBackdrop">
+<div class="modal" role="dialog" aria-modal="true">
+<div class="modal-head"><div class="modal-title">일정 기록</div><button class="modal-close" id="modalClose" aria-label="닫기">&times;</button></div>
+<div class="selected-date" id="selectedDate"></div>
+<div class="schedule-list" id="scheduleList"></div>
+<form class="schedule-form" id="scheduleForm"><input class="schedule-input" id="scheduleInput" maxlength="60" placeholder="일정을 입력하세요"><button class="add-event" type="submit" aria-label="일정 추가">+</button></form>
+</div></div>
+
+<script>
+const PHOTO_KEY='photo_calendar_hero',EVENTS_KEY='photo_calendar_events';
+const today=new Date();let viewYear=today.getFullYear(),viewMonth=today.getMonth(),selectedDateKey=null;
+for(let i=0;i<24;i++){const s=document.createElement('span');document.getElementById('dots').appendChild(s)}
+
+const savedPhoto=localStorage.getItem(PHOTO_KEY);
+if(savedPhoto){heroImg.src=savedPhoto;heroImg.style.display='block';heroPlaceholder.style.display='none'}
+heroBtn.addEventListener('click',()=>photoInput.click());
+photoInput.addEventListener('change',e=>{const f=e.target.files[0];if(!f)return;const r=new FileReader();r.onload=ev=>{localStorage.setItem(PHOTO_KEY,ev.target.result);heroImg.src=ev.target.result;heroImg.style.display='block';heroPlaceholder.style.display='none'};r.readAsDataURL(f)});
+
+function loadEvents(){try{return JSON.parse(localStorage.getItem(EVENTS_KEY)||'{}')}catch(e){return{}}}
+function saveEvents(x){localStorage.setItem(EVENTS_KEY,JSON.stringify(x))}
+function key(y,m,d){return y+'-'+String(m+1).padStart(2,'0')+'-'+String(d).padStart(2,'0')}
+function fmt(k){const p=k.split('-');return p[0]+'.'+p[1]+'.'+p[2]}
+
+function render(){
+monthLabel.innerHTML=(viewMonth+1)+'월 <span class="sep">🌰</span> '+viewYear;
+const grid=daysGrid;grid.innerHTML='';const events=loadEvents();
+const first=new Date(viewYear,viewMonth,1).getDay(),max=new Date(viewYear,viewMonth+1,0).getDate(),prevMax=new Date(viewYear,viewMonth,0).getDate();
+for(let i=first-1;i>=0;i--){let c=document.createElement('div');c.className='muted';c.textContent=prevMax-i;grid.appendChild(c)}
+for(let d=1;d<=max;d++){
+const k=key(viewYear,viewMonth,d),c=document.createElement('div');
+const isToday=d===today.getDate()&&viewMonth===today.getMonth()&&viewYear===today.getFullYear();if(isToday)c.classList.add('today');
+const n=document.createElement('span');n.className='day-number';n.textContent=d;c.appendChild(n);
+if(events[k]?.length){const dot=document.createElement('span');dot.className='event-dot';c.appendChild(dot);c.addEventListener('mouseenter',e=>showTip(e,k));c.addEventListener('mousemove',moveTip);c.addEventListener('mouseleave',hideTip)}
+c.addEventListener('click',()=>openModal(k));grid.appendChild(c)}
+const remain=(7-((first+max)%7))%7;for(let d=1;d<=remain;d++){let c=document.createElement('div');c.className='muted';c.textContent=d;grid.appendChild(c)}
+}
+
+function showTip(e,k){const a=loadEvents()[k]||[];eventTooltip.innerHTML='<div class="tooltip-date">'+fmt(k)+'</div>'+a.slice(0,3).map(x=>'<div class="tooltip-item">• '+esc(x)+'</div>').join('')+(a.length>3?'<div class="tooltip-more">+ '+(a.length-3)+'개 더 있음</div>':'');eventTooltip.style.display='block';moveTip(e)}
+function moveTip(e){let x=e.clientX+12,y=e.clientY+12,r=eventTooltip.getBoundingClientRect();if(x+r.width>innerWidth-10)x=e.clientX-r.width-12;if(y+r.height>innerHeight-10)y=e.clientY-r.height-12;eventTooltip.style.left=Math.max(10,x)+'px';eventTooltip.style.top=Math.max(10,y)+'px'}
+function hideTip(){eventTooltip.style.display='none'}
+function esc(s){const d=document.createElement('div');d.textContent=s;return d.innerHTML}
+
+function openModal(k){hideTip();selectedDateKey=k;selectedDate.textContent=fmt(k);renderList();modalBackdrop.classList.add('open');setTimeout(()=>scheduleInput.focus(),50)}
+function closeModal(){modalBackdrop.classList.remove('open');selectedDateKey=null}
+function renderList(){const a=loadEvents()[selectedDateKey]||[];scheduleList.innerHTML='';if(!a.length){const e=document.createElement('div');e.className='empty-events';e.textContent='등록된 일정이 없어요.';scheduleList.appendChild(e);return}a.forEach((item,i)=>{const row=document.createElement('div');row.className='schedule-row';const t=document.createElement('span');t.textContent=item;const b=document.createElement('button');b.className='delete-event';b.textContent='×';b.title='삭제';b.onclick=()=>{const all=loadEvents();all[selectedDateKey].splice(i,1);if(!all[selectedDateKey].length)delete all[selectedDateKey];saveEvents(all);renderList();render()};row.append(t,b);scheduleList.appendChild(row)})}
+scheduleForm.addEventListener('submit',e=>{e.preventDefault();const v=scheduleInput.value.trim();if(!v||!selectedDateKey)return;const all=loadEvents();(all[selectedDateKey]??=[]).push(v);saveEvents(all);scheduleInput.value='';renderList();render();scheduleInput.focus()});
+modalClose.onclick=closeModal;modalBackdrop.onclick=e=>{if(e.target===modalBackdrop)closeModal()};document.addEventListener('keydown',e=>{if(e.key==='Escape')closeModal()});
+prevBtn.onclick=()=>{viewMonth--;if(viewMonth<0){viewMonth=11;viewYear--}render()};nextBtn.onclick=()=>{viewMonth++;if(viewMonth>11){viewMonth=0;viewYear++}render()};render();
+</script>
+</body>
+</html>
