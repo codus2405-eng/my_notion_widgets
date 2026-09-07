@@ -1,0 +1,1352 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1.0">
+<title>포토 캘린더</title>
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+html,body{width:100%;min-height:100%;margin:0}
+body{font-family:-apple-system,"Malgun Gothic",sans-serif;background:transparent;display:flex;justify-content:center;align-items:flex-start;padding:0}
+.card{width:100%;height:100%;min-height:360px;background:#fff;border-radius:16px;overflow:visible;box-shadow:0 4px 24px rgba(0,0,0,.08);position:relative;container-type:size}
+.hero{width:100%;height:38%;min-height:130px;max-height:240px;background:#EAF1EF;position:relative;cursor:pointer;overflow:hidden;border-radius:16px 16px 0 0}
+.hero img{width:100%;height:100%;object-fit:cover;display:block}
+.hero-placeholder{position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:8px;color:#9BAFA9}
+.hero-placeholder svg{width:30px;height:30px}.hero-placeholder span{font-size:12px}#photoInput{display:none}
+.dotted-divider{height:9px;display:flex;justify-content:space-between;align-items:center;padding:0 10px}
+.dotted-divider span{width:3px;height:3px;border-radius:50%;background:#D8DDD9}
+.header{height:10%;min-height:40px;display:flex;align-items:center;justify-content:center;gap:14px;padding:8px 0 0}
+.nav-btn{width:22px;height:22px;border:0;background:transparent;color:#C7CCC9;font-size:14px;cursor:pointer}.nav-btn:hover{color:#6FA35E}
+.month-label{font-size:clamp(13px, 5cqw, 16px);font-weight:700;color:#4A5D3A;letter-spacing:.3px;display:flex;align-items:center;gap:6px}
+.month-label .sep{font-size:13px}
+.weekdays,.days{display:grid;grid-template-columns:repeat(7,1fr);text-align:center}
+.weekdays{height:6%;min-height:24px;padding:5px clamp(8px, 4cqw, 14px) 2px}.weekdays div{font-size:clamp(8px, 3cqw, 10px);color:#6FA35E;font-weight:600}
+.days{padding:0 clamp(8px, 4cqw, 14px) clamp(8px, 3cqh, 18px);align-content:start;grid-auto-rows:clamp(28px, 7cqh, 38px)}
+.days div{height:clamp(28px, 7cqh, 38px);min-width:0;position:relative;display:flex;align-items:center;justify-content:center;font-size:clamp(11px, 3.8cqw, 13px);color:#3C3C38;cursor:pointer;border-radius:8px}
+.days div:not(.muted):hover{background:#F3F7F1}.days .muted{color:#D9D9D5;cursor:default}
+.day-number{width:clamp(22px, 8cqw, 26px);height:clamp(22px, 8cqw, 26px);border-radius:50%;display:flex;align-items:center;justify-content:center;font-weight:400}
+.days .today .day-number{background:#6FA35E;color:#fff;font-weight:700}
+.event-dot{position:absolute;left:50%;bottom:clamp(3px, 1.2cqh, 5px);transform:translateX(-50%);width:4px;height:4px;border-radius:50%;background:#7FA878}
+.days .today .event-dot{background:#FFFFFF}
+.event-tooltip{position:fixed;z-index:50;width:180px;max-width:calc(100vw - 24px);padding:10px 12px;background:rgba(255,255,255,.98);border:1px solid #DDE6DA;border-radius:10px;box-shadow:0 5px 18px rgba(55,75,50,.12);color:#465541;font-size:11px;line-height:1.5;pointer-events:none;display:none}
+.tooltip-date{font-size:10px;color:#7FA878;font-weight:700;margin-bottom:4px}.tooltip-item{white-space:nowrap;overflow:hidden;text-overflow:ellipsis}.tooltip-more{color:#A0AAA0;margin-top:2px}
+.modal-backdrop{position:fixed;inset:0;z-index:100;background:rgba(35,45,35,.18);display:none;align-items:center;justify-content:center;padding:16px}.modal-backdrop.open{display:flex}
+.modal{
+  width:100%;
+  max-width:300px;
+  max-height:calc(100vh - 32px);
+  overflow-y:auto;
+  background:#fff;
+  border:1px solid #E0E8DD;
+  border-radius:14px;
+  box-shadow:0 10px 35px rgba(40,55,40,.18);
+  padding:16px;
+}
+.modal-head{display:flex;align-items:center;justify-content:space-between;margin-bottom:14px}.modal-title{color:#4A5D3A;font-size:15px;font-weight:700}
+.modal-close{border:0;background:transparent;color:#AAB2A8;font-size:20px;line-height:1;cursor:pointer}.selected-date{font-size:11px;color:#8A9588;margin-bottom:12px}
+.schedule-list{display:flex;flex-direction:column;gap:6px;margin-bottom:12px;max-height:120px;overflow-y:auto}
+.schedule-row{display:flex;align-items:center;gap:7px;padding:7px 8px;background:#F5F8F3;border-radius:7px;font-size:11px;color:#4E5C4B}
+.schedule-row span{flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.delete-event{border:0;background:transparent;color:#B9C0B7;cursor:pointer;font-size:13px;padding:1px 2px}.delete-event:hover{color:#9B6E68}
+.schedule-form{display:flex;gap:6px}.schedule-input{flex:1;min-width:0;height:34px;border:1px solid #DCE5D9;border-radius:7px;padding:0 9px;outline:0;font-size:11px;color:#4A5448}.schedule-input:focus{border-color:#9DBB98}
+.add-event{width:38px;height:34px;border:0;border-radius:7px;background:#7FA878;color:#fff;font-size:17px;cursor:pointer}.add-event:hover{background:#6F9969}
+.empty-events{color:#B1B8AF;font-size:10px;padding:3px 0 9px}
+.date-range-separator{
+  display:none;
+  align-items:center;
+  justify-content:center;
+  color:#A5AEA2;
+  font-size:11px;
+  flex:0 0 12px;
+}
+.registered-title{
+  margin-top:13px;
+  margin-bottom:5px;
+  color:#7F8B7C;
+  font-size:10px;
+  font-weight:700;
+}
+.range-mode.active{background:#F0F6EE;color:#5F805B;border-color:#B9D0B5;font-weight:700}
+.date-fields{
+  display:grid;
+  grid-template-columns:minmax(0,1fr) minmax(0,1fr);
+  gap:6px;
+  width:100%;
+  margin-bottom:7px;
+}
+.date-fields label{
+  min-width:0;
+  width:100%;
+  display:flex;
+  align-items:center;
+  gap:4px;
+}
+.date-fields label span{font-size:9px;color:#8A9588}
+.date-input{
+  flex:1;
+  min-width:0;
+  width:100%;
+  height:30px;border:1px solid #DCE5D9;border-radius:7px;padding:0 6px;outline:0;font-size:10px;color:#4A5448;background:#fff}
+.date-input:focus{border-color:#9DBB98}
+.hidden{display:none!important}
+.event-input-row{
+  display:flex;
+  width:100%;
+  gap:6px;
+  margin-top:8px;
+}
+
+@container (max-width: 280px){
+  .hero{min-height:115px}
+  .month-label{font-size:13px}
+  .nav-btn{width:18px;height:18px}
+  .days div{font-size:11px}
+  .modal{padding:13px}
+  .date-fields{grid-template-columns:1fr}
+  .date-fields label{display:grid;grid-template-columns:32px minmax(0,1fr)}
+}.card{max-width:100%}}
+</style>
+
+
+
+
+
+
+
+
+
+
+
+
+
+<style>
+/* 일정 표시 점
+   날짜 숫자 바로 아래쪽, 다음 날짜와의 사이 공간 중앙에 배치 */
+.days > div {
+  position: relative;
+}
+
+.days > div .calendar-marker {
+  position: absolute !important;
+  top: calc(50% + 12px) !important;
+  bottom: auto !important;
+  transform: translate(-50%, -50%) !important;
+  z-index: 3;
+}
+
+/* 일반 일정 */
+.days > div .event-marker {
+  left: calc(50% - 4px) !important;
+}
+
+/* 공휴일 */
+.days > div .holiday-marker {
+  left: calc(50% + 4px) !important;
+}
+
+/* 일정과 공휴일이 동시에 있는 날 */
+.days > div .both-marker {
+  left: 50% !important;
+}
+
+/* 오늘 날짜의 일정 표시는 흰색 유지 */
+.days > div.today .calendar-marker {
+  background: #FFFFFF !important;
+}
+
+@media (max-width: 340px) {
+  .days > div .calendar-marker {
+    top: calc(50% + 11px) !important;
+  }
+}
+</style>
+
+</head>
+<body>
+<div class="card">
+<div class="hero" id="heroBtn">
+<div class="hero-placeholder" id="heroPlaceholder">
+<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><rect x="3" y="5" width="18" height="14" rx="2"/><circle cx="8.5" cy="10.5" r="1.5"/><path d="M21 15l-5-5-9 9"/></svg>
+<span>사진이나 움짤을 눌러서 추가하세요</span></div>
+<img id="heroImg" style="display:none" alt="배너 이미지"><input type="file" id="photoInput" accept="image/*">
+</div>
+<div class="dotted-divider" id="dots"></div>
+<div class="header"><button class="nav-btn" id="prevBtn" aria-label="이전 달">&#8249;</button><div class="month-label" id="monthLabel"></div><button class="nav-btn" id="nextBtn" aria-label="다음 달">&#8250;</button></div>
+<div class="weekdays"><div>S</div><div>M</div><div>T</div><div>W</div><div>T</div><div>F</div><div>S</div></div>
+<div class="days" id="daysGrid"></div>
+</div>
+
+<div class="event-tooltip" id="eventTooltip"></div>
+<div class="modal-backdrop" id="modalBackdrop">
+<div class="modal" role="dialog" aria-modal="true">
+<div class="modal-head"><div class="modal-title">일정 기록</div><button class="modal-close" id="modalClose" aria-label="닫기">&times;</button></div>
+<div class="selected-date" id="selectedDate"></div>
+
+<form class="schedule-form" id="scheduleForm">
+  <div class="date-fields">
+    <label>
+      <span>시작</span>
+      <input class="date-input" id="startDate" type="date">
+    </label>
+    <span class="date-range-separator">~</span>
+    <label>
+      <span>종료</span>
+      <input class="date-input" id="endDate" type="date">
+    </label>
+  </div>
+
+  <div class="event-input-row">
+    <input class="schedule-input" id="scheduleInput" type="text" maxlength="60" placeholder="일정을 입력하세요">
+    <button class="add-event" type="submit" aria-label="일정 추가">+</button>
+  </div>
+</form>
+
+<div class="registered-title">등록한 일정</div>
+<div class="schedule-list" id="scheduleList"></div>
+</div></div>
+
+<script>
+const PHOTO_KEY='photo_calendar_hero',EVENTS_KEY='photo_calendar_events';
+const today=new Date();
+
+// 대한민국 공휴일 — 2026년 현행 기준
+// 2026년에는 노동절(5/1)과 제헌절(7/17)이 공휴일에 추가되었습니다.
+const KR_HOLIDAYS = {
+  "2026-01-01":"신정",
+  "2026-02-16":"설날 연휴",
+  "2026-02-17":"설날",
+  "2026-02-18":"설날 연휴",
+  "2026-03-01":"삼일절",
+  "2026-03-02":"삼일절 대체공휴일",
+  "2026-05-01":"노동절",
+  "2026-05-05":"어린이날",
+  "2026-05-24":"부처님오신날",
+  "2026-05-25":"부처님오신날 대체공휴일",
+  "2026-06-03":"전국동시지방선거일",
+  "2026-06-06":"현충일",
+  "2026-07-17":"제헌절",
+  "2026-08-15":"광복절",
+  "2026-08-17":"광복절 대체공휴일",
+  "2026-09-24":"추석 연휴",
+  "2026-09-25":"추석",
+  "2026-09-26":"추석 연휴",
+  "2026-09-28":"추석 대체공휴일",
+  "2026-10-03":"개천절",
+  "2026-10-05":"개천절 대체공휴일",
+  "2026-10-09":"한글날",
+  "2026-12-25":"성탄절"
+};
+
+function getHoliday(k){ return KR_HOLIDAYS[k] || null; }
+let viewYear=today.getFullYear(),viewMonth=today.getMonth(),selectedDateKey=null;
+const heroBtn=document.getElementById('heroBtn');
+const heroImg=document.getElementById('heroImg');
+const heroPlaceholder=document.getElementById('heroPlaceholder');
+const photoInput=document.getElementById('photoInput');
+const monthLabel=document.getElementById('monthLabel');
+const daysGrid=document.getElementById('daysGrid');
+const prevBtn=document.getElementById('prevBtn');
+const nextBtn=document.getElementById('nextBtn');
+const eventTooltip=document.getElementById('eventTooltip');
+const modalBackdrop=document.getElementById('modalBackdrop');
+const modalClose=document.getElementById('modalClose');
+const selectedDate=document.getElementById('selectedDate');
+const scheduleList=document.getElementById('scheduleList');
+const scheduleInput=document.getElementById('scheduleInput');
+const scheduleForm=document.getElementById('scheduleForm');
+const startDate=document.getElementById('startDate');
+const endDate=document.getElementById('endDate');
+for(let i=0;i<24;i++){const s=document.createElement('span');document.getElementById('dots').appendChild(s)}
+
+const savedPhoto=localStorage.getItem(PHOTO_KEY);
+if(savedPhoto){heroImg.src=savedPhoto;heroImg.style.display='block';heroPlaceholder.style.display='none'}
+heroBtn.addEventListener('click',()=>photoInput.click());
+photoInput.addEventListener('change',e=>{const f=e.target.files[0];if(!f)return;const r=new FileReader();r.onload=ev=>{localStorage.setItem(PHOTO_KEY,ev.target.result);heroImg.src=ev.target.result;heroImg.style.display='block';heroPlaceholder.style.display='none'};r.readAsDataURL(f)});
+
+function loadEvents(){try{return JSON.parse(localStorage.getItem(EVENTS_KEY)||'{}')}catch(e){return{}}}
+function saveEvents(x){localStorage.setItem(EVENTS_KEY,JSON.stringify(x))}
+function key(y,m,d){return y+'-'+String(m+1).padStart(2,'0')+'-'+String(d).padStart(2,'0')}
+function fmt(k){const p=k.split('-');return p[0]+'.'+p[1]+'.'+p[2]}
+
+function render(){
+monthLabel.innerHTML=(viewMonth+1)+'월 <span class="sep">🌰</span> '+viewYear;
+const grid=daysGrid;grid.innerHTML='';
+const events=loadEvents();
+const first=new Date(viewYear,viewMonth,1).getDay(),
+      max=new Date(viewYear,viewMonth+1,0).getDate(),
+      prevMax=new Date(viewYear,viewMonth,0).getDate();
+
+for(let i=first-1;i>=0;i--){
+  let c=document.createElement('div');
+  c.className='muted';
+  c.textContent=prevMax-i;
+  grid.appendChild(c);
+}
+
+for(let d=1;d<=max;d++){
+  const k=key(viewYear,viewMonth,d),
+        c=document.createElement('div'),
+        holiday=getHoliday(k),
+        hasEvent=!!events[k]?.length,
+        isToday=d===today.getDate()&&viewMonth===today.getMonth()&&viewYear===today.getFullYear();
+
+  if(isToday)c.classList.add('today');
+  if(holiday)c.classList.add('holiday');
+
+  const n=document.createElement('span');
+  n.className='day-number';
+  n.textContent=d;
+  c.appendChild(n);
+
+  if(hasEvent || holiday){
+    const marker=document.createElement('span');
+    marker.className='calendar-marker'+(holiday?' holiday-marker':'')+(hasEvent?' event-marker':'');
+    if(holiday && hasEvent) marker.classList.add('both-marker');
+    c.appendChild(marker);
+
+    c.addEventListener('mouseenter',e=>showTip(e,k));
+    c.addEventListener('mousemove',moveTip);
+    c.addEventListener('mouseleave',hideTip);
+  }
+
+  c.addEventListener('click',()=>openModal(k));
+  grid.appendChild(c);
+}
+
+const remain=(7-((first+max)%7))%7;
+for(let d=1;d<=remain;d++){
+  let c=document.createElement('div');
+  c.className='muted';
+  c.textContent=d;
+  grid.appendChild(c);
+}
+}
+function showTip(e,k){
+  const a=loadEvents()[k]||[];
+  const holiday=getHoliday(k);
+  let content='<div class="tooltip-date">'+fmt(k)+'</div>';
+  if(holiday) content+='<div class="tooltip-holiday">● '+esc(holiday)+'</div>';
+  content+=a.slice(0,3).map(x=>'<div class="tooltip-item">• '+esc(x)+'</div>').join('');
+  if(a.length>3) content+='<div class="tooltip-more">+ '+(a.length-3)+'개 더 있음</div>';
+  eventTooltip.innerHTML=content;
+  eventTooltip.style.display='block';
+  moveTip(e);
+}
+function moveTip(e){let x=e.clientX+12,y=e.clientY+12,r=eventTooltip.getBoundingClientRect();if(x+r.width>innerWidth-10)x=e.clientX-r.width-12;if(y+r.height>innerHeight-10)y=e.clientY-r.height-12;eventTooltip.style.left=Math.max(10,x)+'px';eventTooltip.style.top=Math.max(10,y)+'px'}
+function hideTip(){eventTooltip.style.display='none'}
+function esc(s){const d=document.createElement('div');d.textContent=s;return d.innerHTML}
+
+let rangeMode = false;
+
+function openModal(k){
+  hideTip();
+  selectedDateKey=k;
+  selectedDate.textContent=fmt(k);
+  startDate.value=k;
+  endDate.value=k;
+  renderList();
+  modalBackdrop.classList.add('open');
+  setTimeout(()=>scheduleInput.focus(),50);
+}
+function closeModal(){modalBackdrop.classList.remove('open');selectedDateKey=null}
+function renderList(){
+  const a=loadEvents()[selectedDateKey]||[];
+  const holiday=getHoliday(selectedDateKey);
+  scheduleList.innerHTML='';
+
+  if(holiday){
+    const row=document.createElement('div');
+    row.className='schedule-row holiday-row';
+    const t=document.createElement('span');
+    t.textContent='🌿 '+holiday;
+    const badge=document.createElement('small');
+    badge.textContent='공휴일';
+    row.append(t,badge);
+    scheduleList.appendChild(row);
+  }
+
+  if(!a.length && !holiday){
+    const e=document.createElement('div');
+    e.className='empty-events';
+    e.textContent='등록된 일정이 없어요.';
+    scheduleList.appendChild(e);
+    return;
+  }
+
+  a.forEach((item,i)=>{
+    const row=document.createElement('div');
+    row.className='schedule-row';
+    const t=document.createElement('span');
+    t.textContent=item;
+    const b=document.createElement('button');
+    b.className='delete-event';
+    b.textContent='×';
+    b.title='삭제';
+    b.onclick=()=>{
+      const all=loadEvents();
+      if(!all[selectedDateKey])return;
+      all[selectedDateKey].splice(i,1);
+      if(!all[selectedDateKey].length)delete all[selectedDateKey];
+      saveEvents(all);
+      renderList();
+      render();
+    };
+    row.append(t,b);
+    scheduleList.appendChild(row);
+  });
+}
+scheduleForm.addEventListener('submit',e=>{
+  e.preventDefault();
+  const v=scheduleInput.value.trim();
+  if(!v||!selectedDateKey||!startDate.value)return;
+
+  let start=startDate.value;
+  let end=endDate.value || start;
+
+  if(end < start){
+    const temp=start; start=end; end=temp;
+  }
+
+  const all=loadEvents();
+  const cursor=new Date(start+'T12:00:00');
+  const last=new Date(end+'T12:00:00');
+
+  while(cursor<=last){
+    const k=cursor.getFullYear()+'-'+String(cursor.getMonth()+1).padStart(2,'0')+'-'+String(cursor.getDate()).padStart(2,'0');
+    (all[k]??=[]).push(v);
+    cursor.setDate(cursor.getDate()+1);
+  }
+
+  saveEvents(all);
+  scheduleInput.value='';
+  renderList();
+  render();
+  scheduleInput.focus();
+});
+
+modalClose.onclick=closeModal;modalBackdrop.onclick=e=>{if(e.target===modalBackdrop)closeModal()};document.addEventListener('keydown',e=>{if(e.key==='Escape')closeModal()});
+prevBtn.onclick=()=>{viewMonth--;if(viewMonth<0){viewMonth=11;viewYear--}render()};nextBtn.onclick=()=>{viewMonth++;if(viewMonth>11){viewMonth=0;viewYear++}render()};render();
+</script>
+
+<style>
+/* ===== 일정 기록창 최종 정돈 ===== */
+.modal{
+  width:min(270px,calc(100vw - 28px));
+  max-width:270px;
+  padding:16px;
+  overflow-x:hidden;
+}
+
+.modal-head{
+  height:24px;
+  margin:0 0 9px;
+  display:flex;
+  align-items:center;
+  justify-content:space-between;
+}
+
+.modal-title{font-size:14px;line-height:1}
+.modal-close{font-size:19px;width:20px;height:20px;display:flex;align-items:center;justify-content:center}
+
+.selected-date{
+  margin:0 0 10px;
+  line-height:1.2;
+}
+
+
+.date-fields{
+  width:100%;
+  display:flex !important;
+  align-items:flex-end;
+  gap:6px;
+  margin:0;
+}
+
+.date-fields label{
+  flex:1 1 0;
+  min-width:0;
+  width:auto;
+  display:block !important;
+}
+
+.date-fields label span{
+  display:block;
+  height:12px;
+  margin:0 0 3px;
+  font-size:9px;
+  line-height:12px;
+}
+
+.date-input{
+  display:block;
+  width:100%;
+  height:31px;
+  min-width:0;
+  margin:0;
+  padding:0 6px;
+  font-size:9px;
+}
+
+.date-range-separator{
+  flex:0 0 10px;
+  width:10px;
+  height:31px;
+  padding:0;
+  align-items:center;
+  justify-content:center;
+  font-size:10px;
+}
+
+/* 일정 입력은 날짜 아래 독립된 한 줄 */
+.event-input-row{
+  display:flex;
+  width:100%;
+  height:32px;
+  gap:6px;
+  margin:9px 0 0;
+}
+
+.schedule-input{
+  flex:1 1 auto;
+  min-width:0;
+  width:auto;
+  height:32px;
+  padding:0 9px;
+  font-size:10px;
+}
+
+.add-event{
+  flex:0 0 34px;
+  width:34px;
+  height:32px;
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  padding:0;
+  font-size:16px;
+}
+
+/* 등록한 일정 */
+.registered-title{
+  margin:12px 0 5px;
+  padding-top:9px;
+  border-top:1px solid #EDF1EB;
+  font-size:10px;
+  line-height:1;
+}
+
+.schedule-list{
+  width:100%;
+  max-width:100%;
+  max-height:110px;
+  margin:0;
+  overflow-x:hidden;
+  overflow-y:auto;
+  display:flex;
+  flex-direction:column;
+  gap:5px;
+}
+
+.schedule-row{
+  width:100%;
+  min-height:29px;
+  padding:6px 7px;
+  display:flex;
+  align-items:center;
+  gap:6px;
+  border-radius:7px;
+}
+
+.schedule-row span{
+  flex:1 1 auto;
+  min-width:0;
+  line-height:1.3;
+}
+
+.empty-events{
+  padding:4px 0 2px;
+  line-height:1.4;
+}
+
+/* ===== 캘린더 그리드 정돈 ===== */
+.weekdays,
+.days{
+  width:100%;
+  grid-template-columns:repeat(7,minmax(0,1fr));
+}
+
+.weekdays{
+  padding-left:14px;
+  padding-right:14px;
+}
+
+.days{
+  padding-left:14px;
+  padding-right:14px;
+  grid-auto-rows:clamp(28px,7cqh,38px);
+}
+
+.days>div{
+  width:100%;
+  min-width:0;
+  height:clamp(28px,7cqh,38px);
+}
+
+/* 오늘 + 일정: 흰 점 */
+.days .today .event-dot{
+  background:#FFFFFF !important;
+}
+
+@media(max-width:340px){
+  .modal{
+    width:calc(100vw - 24px);
+    max-width:270px;
+    padding:13px;
+  }
+
+  .weekdays,.days{
+    padding-left:8px;
+    padding-right:8px;
+  }
+
+  .date-input{
+    font-size:8px;
+    padding:0 4px;
+  }
+
+  .date-fields{
+    gap:4px;
+  }
+}
+</style>
+
+
+<style>
+/* ===== 일정 기록 모달: 하루 / 기간 최종 UI ===== */
+.modal{
+  width:min(300px,calc(100vw - 28px));
+  max-width:300px;
+  padding:17px 18px 16px;
+  border-radius:14px;
+  overflow:hidden;
+}
+
+.modal-head{
+  height:24px;
+  margin:0 0 5px;
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  position:relative;
+}
+
+.modal-title{
+  font-size:14px;
+  font-weight:700;
+  line-height:24px;
+  color:#4A5448;
+}
+
+.modal-close{
+  position:absolute;
+  right:0;
+  top:0;
+  width:22px;
+  height:22px;
+  border:0;
+  background:transparent;
+  color:#A8B0A5;
+  font-size:18px;
+  line-height:22px;
+}
+
+.selected-date{
+  width:100%;
+  text-align:center;
+  margin:0 0 12px;
+  font-size:10px;
+  color:#9AA297;
+  line-height:14px;
+}
+
+/* 하루 / 기간을 같은 줄에 정렬 */
+.range-mode.active{
+  background:#F0F6EE;
+  border-color:#C8D8C4;
+  color:#5F805B;
+  font-weight:700;
+}
+
+/* 날짜 선택 영역 */
+.schedule-form{
+  width:100%;
+  display:block;
+  margin:0;
+}
+
+.date-fields{
+  width:100%;
+  display:flex !important;
+  align-items:flex-end;
+  justify-content:center;
+  gap:7px;
+  margin:0;
+}
+
+.date-fields label{
+  flex:1 1 0;
+  min-width:0;
+  width:auto;
+  display:block !important;
+}
+
+.date-fields label span{
+  display:block;
+  width:100%;
+  height:14px;
+  margin:0 0 4px;
+  color:#899287;
+  font-size:9px;
+  line-height:14px;
+  text-align:left;
+}
+
+.date-input{
+  display:block;
+  width:100%;
+  min-width:0;
+  height:31px;
+  padding:0 6px;
+  border:1px solid #DCE5D9;
+  border-radius:7px;
+  outline:none;
+  background:#fff;
+  color:#4A5448;
+  font-size:9px;
+}
+
+.date-input:focus{
+  border-color:#A9C2A5;
+}
+
+.date-range-separator{
+  display:none;
+  flex:0 0 12px;
+  width:12px;
+  height:31px;
+  align-items:center;
+  justify-content:center;
+  padding:0;
+  color:#9AA297;
+  font-size:10px;
+  line-height:31px;
+}
+
+/* 하루 모드: 날짜 한 칸만 중앙/전체 폭 */
+.date-fields:has(#endDateWrap.hidden) label:first-child{
+  flex:1 1 100%;
+}
+
+/* 일정 입력은 날짜 아래 한 줄 */
+.event-input-row{
+  width:100%;
+  height:32px;
+  display:flex;
+  align-items:stretch;
+  gap:6px;
+  margin:10px 0 0;
+}
+
+.schedule-input{
+  flex:1 1 auto;
+  min-width:0;
+  width:auto;
+  height:32px;
+  padding:0 9px;
+  border:1px solid #DCE5D9;
+  border-radius:7px;
+  outline:none;
+  font-size:10px;
+  color:#4A5448;
+}
+
+.schedule-input:focus{
+  border-color:#A9C2A5;
+}
+
+.add-event{
+  flex:0 0 34px;
+  width:34px;
+  height:32px;
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  padding:0;
+  border:1px solid #AFC8AA;
+  border-radius:7px;
+  background:#7FA575;
+  color:#fff;
+  font-size:16px;
+  line-height:1;
+}
+
+/* 등록한 일정 영역 */
+.registered-title{
+  width:100%;
+  margin:13px 0 6px;
+  padding-top:10px;
+  border-top:1px solid #EDF1EB;
+  color:#7F8A7D;
+  font-size:10px;
+  font-weight:700;
+  line-height:14px;
+}
+
+.schedule-list{
+  width:100%;
+  max-width:100%;
+  max-height:105px;
+  display:flex;
+  flex-direction:column;
+  gap:5px;
+  overflow-x:hidden;
+  overflow-y:auto;
+}
+
+.schedule-row{
+  width:100%;
+  min-width:0;
+  min-height:28px;
+  padding:6px 7px;
+  display:flex;
+  align-items:center;
+  gap:6px;
+  border-radius:7px;
+  background:#F7F9F6;
+}
+
+.schedule-row span{
+  flex:1 1 auto;
+  min-width:0;
+  overflow:hidden;
+  text-overflow:ellipsis;
+  white-space:nowrap;
+  font-size:9px;
+  color:#5D665B;
+}
+
+.empty-events{
+  padding:3px 0 2px;
+  color:#B1B8AF;
+  font-size:9px;
+  line-height:14px;
+}
+
+/* 좁은 노션 임베드에서도 깨지지 않게 */
+@media(max-width:340px){
+  .modal{
+    width:calc(100vw - 20px);
+    max-width:none;
+    padding:14px;
+  }
+
+  .range-controls{
+    gap:16px;
+  }
+
+  .date-fields{
+    gap:4px;
+  }
+
+  .date-input{
+    font-size:8px;
+    padding:0 4px;
+  }
+
+  .date-range-separator{
+    flex-basis:9px;
+    width:9px;
+  }
+}
+</style>
+
+
+<style>
+/* ===== 시작 ~ 종료 방식 일정 기록창 ===== */
+.modal{
+  width:min(300px,calc(100vw - 28px));
+  max-width:300px;
+  padding:17px 18px 16px;
+  overflow:hidden;
+}
+
+.modal-head{
+  height:24px;
+  margin:0 0 5px;
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  position:relative;
+}
+
+.modal-title{
+  font-size:14px;
+  font-weight:700;
+  line-height:24px;
+  color:#4A5448;
+}
+
+.modal-close{
+  position:absolute;
+  right:0;
+  top:0;
+  width:22px;
+  height:22px;
+}
+
+.selected-date{
+  width:100%;
+  text-align:center;
+  margin:0 0 12px;
+  font-size:10px;
+  color:#9AA297;
+  line-height:14px;
+}
+
+/* 시작 ~ 종료는 항상 한 줄로 균등 정렬 */
+.schedule-form{
+  width:100%;
+  display:block;
+  margin:0;
+}
+
+.date-fields{
+  width:100%;
+  display:grid !important;
+  grid-template-columns:minmax(0,1fr) 16px minmax(0,1fr);
+  align-items:end;
+  gap:6px;
+  margin:0;
+}
+
+.date-fields label{
+  min-width:0;
+  width:100%;
+  display:block !important;
+}
+
+.date-fields label span{
+  display:block;
+  height:14px;
+  margin:0 0 4px;
+  color:#899287;
+  font-size:9px;
+  line-height:14px;
+  text-align:left;
+}
+
+.date-input{
+  display:block;
+  width:100%;
+  min-width:0;
+  height:31px;
+  padding:0 6px;
+  border:1px solid #DCE5D9;
+  border-radius:7px;
+  outline:none;
+  background:#fff;
+  color:#4A5448;
+  font-size:9px;
+}
+
+.date-range-separator{
+  display:flex !important;
+  width:16px;
+  height:31px;
+  align-items:center;
+  justify-content:center;
+  color:#9AA297;
+  font-size:10px;
+  line-height:31px;
+  padding:0;
+}
+
+/* 일정 입력칸은 날짜 아래 */
+.event-input-row{
+  width:100%;
+  height:32px;
+  display:flex;
+  align-items:stretch;
+  gap:6px;
+  margin:10px 0 0;
+}
+
+.schedule-input{
+  flex:1 1 auto;
+  min-width:0;
+  width:auto;
+  height:32px;
+  padding:0 9px;
+  border:1px solid #DCE5D9;
+  border-radius:7px;
+  outline:none;
+  font-size:10px;
+  color:#4A5448;
+}
+
+.add-event{
+  flex:0 0 34px;
+  width:34px;
+  height:32px;
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  padding:0;
+  border:1px solid #AFC8AA;
+  border-radius:7px;
+  background:#7FA575;
+  color:#fff;
+  font-size:16px;
+  line-height:1;
+}
+
+.registered-title{
+  width:100%;
+  margin:13px 0 6px;
+  padding-top:10px;
+  border-top:1px solid #EDF1EB;
+  color:#7F8A7D;
+  font-size:10px;
+  font-weight:700;
+  line-height:14px;
+}
+
+.schedule-list{
+  width:100%;
+  max-width:100%;
+  max-height:105px;
+  display:flex;
+  flex-direction:column;
+  gap:5px;
+  overflow-x:hidden;
+  overflow-y:auto;
+}
+
+.schedule-row{
+  width:100%;
+  min-width:0;
+  min-height:28px;
+  padding:6px 7px;
+  display:flex;
+  align-items:center;
+  gap:6px;
+  border-radius:7px;
+  background:#F7F9F6;
+}
+
+.schedule-row span{
+  flex:1 1 auto;
+  min-width:0;
+  overflow:hidden;
+  text-overflow:ellipsis;
+  white-space:nowrap;
+  font-size:9px;
+  color:#5D665B;
+}
+
+.empty-events{
+  padding:3px 0 2px;
+  color:#B1B8AF;
+  font-size:9px;
+  line-height:14px;
+}
+
+@media(max-width:340px){
+  .modal{
+    width:calc(100vw - 20px);
+    max-width:none;
+    padding:14px;
+  }
+
+  .date-fields{
+    grid-template-columns:minmax(0,1fr) 12px minmax(0,1fr);
+    gap:4px;
+  }
+
+  .date-input{
+    font-size:8px;
+    padding:0 4px;
+  }
+
+  .date-range-separator{
+    width:12px;
+  }
+}
+</style>
+
+</body>
+</html>
+<style>
+@media (max-width: 340px){
+  .modal-backdrop{padding:10px}
+  .modal{max-width:100%;padding:14px}
+  .date-fields{grid-template-columns:1fr}
+  .date-fields label{display:grid;grid-template-columns:32px minmax(0,1fr)}
+  .date-input{min-width:0}
+}
+</style>
+
+<style>
+.date-fields{
+  display:flex !important;
+  width:100%;
+  align-items:center;
+  gap:5px;
+}
+.date-fields label{
+  flex:1 1 0;
+  min-width:0;
+}
+.date-fields label span{
+  flex:0 0 auto;
+}
+.date-fields .date-input{
+  min-width:0;
+}
+@media (max-width:340px){
+  .modal{padding:13px}
+  .date-fields{gap:3px}
+  .date-fields label{display:flex;gap:3px}
+  .date-fields label span{font-size:8px}
+  .date-input{font-size:9px;padding:0 3px}
+}
+</style>
+
+<style>
+/* 일정 기록 모달 컴팩트 레이아웃 */
+.modal{
+  width:min(260px, calc(100vw - 32px));
+  max-width:260px;
+  padding:15px;
+  overflow-x:hidden;
+}
+
+.modal-head{
+  margin-bottom:10px;
+}
+
+.selected-date{
+  margin-bottom:9px;
+}
+
+.range-controls{
+  margin-bottom:8px;
+}
+
+.date-fields{
+  width:100%;
+  display:grid !important;
+  grid-template-columns:minmax(0,1fr) auto minmax(0,1fr);
+  align-items:center;
+  gap:5px;
+}
+
+.date-fields label{
+  min-width:0;
+  width:100%;
+  display:block !important;
+}
+
+.date-fields label span{
+  display:block;
+  margin-bottom:3px;
+  font-size:9px;
+}
+
+.date-input{
+  display:block;
+  width:100%;
+  min-width:0;
+  max-width:100%;
+  height:30px;
+  padding:0 5px;
+  font-size:9px;
+}
+
+.date-range-separator{
+  display:none;
+  padding-top:12px;
+}
+
+.event-input-row{
+  width:100%;
+  display:flex;
+  gap:5px;
+  margin-top:9px;
+}
+
+.schedule-input{
+  min-width:0;
+  width:100%;
+  flex:1;
+}
+
+.add-event{
+  flex:0 0 34px;
+  width:34px;
+}
+
+.registered-title{
+  margin-top:11px;
+}
+
+.schedule-list{
+  width:100%;
+  max-width:100%;
+  overflow-x:hidden;
+}
+
+.schedule-row{
+  width:100%;
+  min-width:0;
+}
+
+.schedule-row span{
+  min-width:0;
+  overflow:hidden;
+  text-overflow:ellipsis;
+}
+
+@media(max-width:280px){
+  .modal{
+    width:calc(100vw - 24px);
+    max-width:none;
+    padding:12px;
+  }
+
+  .date-fields{
+    grid-template-columns:minmax(0,1fr) auto minmax(0,1fr);
+    gap:3px;
+  }
+
+  .date-input{
+    font-size:8px;
+    padding:0 3px;
+  }
+}
+
+/* ===== 대한민국 공휴일 표시 ===== */
+.days .holiday .day-number{
+  color:#A66F5D;
+}
+.days .today.holiday .day-number{
+  background:#6FA35E;
+  color:#fff;
+}
+.calendar-marker{
+  position:absolute;
+  bottom:3px;
+  width:4px;
+  height:4px;
+  border-radius:50%;
+  transform:translateX(-50%);
+}
+.event-marker{
+  left:calc(50% - 4px);
+  background:#7FA878;
+}
+.holiday-marker{
+  left:calc(50% + 4px);
+  background:#C98F78;
+}
+.both-marker{
+  left:50%;
+  width:9px;
+  height:4px;
+  border-radius:3px;
+  background:linear-gradient(to right,#7FA878 0 44%,#C98F78 44% 56%,#C98F78 56% 100%);
+}
+.days .today .calendar-marker{
+  background:#fff;
+}
+.days .today .both-marker{
+  background:linear-gradient(to right,#fff 0 44%,transparent 44% 56%,#fff 56% 100%);
+}
+.tooltip-holiday{
+  color:#A66F5D;
+  font-weight:700;
+  margin-bottom:3px;
+}
+.holiday-row{
+  background:#FBF5F2;
+}
+.holiday-row span{
+  color:#A66F5D !important;
+}
+.holiday-row small{
+  flex:0 0 auto;
+  font-size:8px;
+  color:#B78B7C;
+}
+</style>
+
+<style id="final-event-marker-position">
+/* =========================================================
+   일정 점 최종 위치
+   - 날짜 숫자의 정확한 가로 중앙
+   - 숫자 바로 아래의 중간 여백
+   - 셀 맨 아래로 내려가지 않음
+   ========================================================= */
+
+.days > div {
+  position: relative !important;
+}
+
+/* 일반 일정: 정확히 중앙 */
+.days > div .event-marker {
+  position: absolute !important;
+  left: 50% !important;
+  top: 22px !important;
+  bottom: auto !important;
+  width: 4px !important;
+  height: 4px !important;
+  margin: 0 !important;
+  border-radius: 50% !important;
+  transform: translateX(-50%) !important;
+  z-index: 5 !important;
+  background: #7FA878 !important;
+}
+
+/* 오늘 날짜는 숫자 원 아래에 흰색 일정 점 */
+.days > div.today .event-marker {
+  background: #FFFFFF !important;
+}
+
+/* 공휴일만 있는 경우 */
+.days > div .holiday-marker {
+  position: absolute !important;
+  left: 50% !important;
+  top: 22px !important;
+  bottom: auto !important;
+  transform: translateX(-50%) !important;
+}
+
+/* 공휴일 + 일정이 동시에 있는 경우에도 일정 점을 중앙에 유지 */
+.days > div .both-marker {
+  position: absolute !important;
+  left: 50% !important;
+  top: 22px !important;
+  bottom: auto !important;
+  transform: translateX(-50%) !important;
+}
+
+/* 작은 크기에서도 같은 위치 비율 */
+@media (max-width: 340px) {
+  .days > div .event-marker,
+  .days > div .holiday-marker,
+  .days > div .both-marker {
+    top: 21px !important;
+  }
+}
+</style>
+
